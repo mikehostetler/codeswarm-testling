@@ -14,6 +14,9 @@ function test(build, stage, config, context) {
   var tunnel = context.testling && context.testling.tunnel;
   if (! tunnel) return stage.error(new Error('No tunnel is set up'));
 
+  var tunneledUrlBase = context.tunnel_url;
+  if (! tunneledUrlBase) return stage.error(new Error('Need context.tunnel_url'));
+
   var framework = config.framework;
   if (! framework) return stage.error(new Error('Need config.framework'));
 
@@ -23,18 +26,24 @@ function test(build, stage, config, context) {
 
   var urls = config.files.split('\n').map(trim).map(fileToURL);
 
+  console.log('URLS:', urls);
+
   async.map(urls, testOneUrl, done);
 
-  function testOneUrl(url, cb) {
+  function testOneUrl(targetURL, cb) {
+
+    if (! targetURL) return cb(new Error('No URL'));
 
     async.map(browsers, testOneUrlOneBrowser, cb);
 
     function testOneUrlOneBrowser(browser, cb) {
 
-      var url = 'https://@testling.com/visit?uri=' +
-                encodeURIComponent(url) +
-                'browser=' +
+      var url = 'https://testling.com/visit?uri=' +
+                encodeURIComponent(targetURL) +
+                '&browser=' +
                 encodeURIComponent(browser);
+
+      console.log('[testling] visiting url %j on browser %j', url, browser);
 
       request({
         auth: {
@@ -42,7 +51,8 @@ function test(build, stage, config, context) {
           pass: config.testling_password
         },
         method: 'GET',
-        url: url
+        url: url,
+        rejectUnauthorized: false
       }, replied);
 
       function replied(err, res, body) {
@@ -57,6 +67,8 @@ function test(build, stage, config, context) {
 
   function done(err, results) {
     if (err) stage.error(err);
+
+    console.log('ALL DONE:', results);
 
     var failed = false;
 
@@ -101,7 +113,7 @@ function test(build, stage, config, context) {
 
   function fileToURL(file) {
     if (file.charAt(0) != '/') file = '/' + file;
-    return 'http://localhost:8080' + file;
+    return tunneledUrlBase + file;
   }
 
 };

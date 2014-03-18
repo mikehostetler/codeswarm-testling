@@ -8,7 +8,7 @@ var SSH_TUNNEL_TIMEOUT_MS = 30 * 1000; // 30 seconds
 
 var tunnelSetupRegex = /ssh .+\r\n/;
 var sshArgsRegex = /ssh -(.*) (.+):localhost:(.+) (.+)@(.+)/
-var tunnelURLRegex = /http\:\/\/tunnel.browserling.com\:{0-9}+/;
+var tunnelURLRegex = /http\:\/\/tunnel.browserling.com\:.+\r/;
 
 
 module.exports = Tunnel;
@@ -44,12 +44,29 @@ Tunnel.prototype.openRemoteTunnel = function(callback) {
 
   function openTunnelReplied(err, res, body) {
     if (err) return callback(err);
+
+    /// get SSH command from response
     var match = body.match(tunnelSetupRegex);
     if (! match)
-      return callback(new Error('Error reply from testling trying to open tunnel: ' + JSON.stringify(body)));
+      return callback(
+        new Error(
+          'Error reply from testling trying to open tunnel: ' +
+          JSON.stringify(body)));
     var command = match[0].trim();
 
     self.context.ssh_command = command;
+
+
+    /// get tunnel URL from response
+
+    match = body.match(tunnelURLRegex);
+    if (! match)
+      return callback(
+        new Error(
+          'Error reply from testling trying to open tunnel: ' +
+          JSON.stringify(body)));
+    var url = match[0].trim();
+    self.context.tunnel_url = url
     callback();
   }
 };
@@ -96,7 +113,8 @@ Tunnel.prototype.openLocalTunnel = function sshTunnel(cb) {
     username + '@' + hostname];
 
   var options = {
-    silent: true
+    silent: true,
+    background: true
   };
 
   var child = this.stage.command('ssh', args, options);
@@ -149,7 +167,7 @@ Tunnel.prototype.start = function(callback) {
     this.placeSshKey.bind(this),
     this.chmodSshKey.bind(this),
     this.openLocalTunnel.bind(this),
-    this.removeSshKey.bind(this),
+    this.removeSshKey.bind(this)
     ], callback);
 };
 
@@ -163,7 +181,8 @@ Tunnel.prototype.stop = function stop(cb) {
   request({
     auth: auth,
     method: 'GET',
-    url: this.base + '/tunnel/close'
+    url: this.base + '/tunnel/close',
+    rejectUnauthorized: false
   }, replied);
 
   function replied(err) {
