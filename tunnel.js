@@ -128,20 +128,24 @@ Tunnel.prototype.openLocalTunnel = function sshTunnel(cb) {
 
   var tunnelOutput = ''
   function onLocalTunnelData(d) {
-    process.stdout.write('[TESTLING SSH TUNNEL] ' + d);
+    process.stdout.write('[testling tunnel ssh] ' + d);
     tunnelOutput += d;
     detectSuccess();
   }
 
+  var success = false;
   function detectSuccess() {
-    if (tunnelOutput.indexOf('remote forward success') >= 0)
+    if (! success && tunnelOutput.indexOf('remote forward success') >= 0) {
+      success = true;
+      console.log('[testling] tunnel is open');
       callback();
+    }
   }
 
   function timedout() {
     var message =
       'opening SSH tunnel to Testling timed out after ' +
-      (SSH_TUNNEL_TIMEOUT_MS / 1000) + 'seconds';
+      (SSH_TUNNEL_TIMEOUT_MS / 1000) + ' seconds';
 
     callback(new Error(message));
   }

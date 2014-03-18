@@ -45,7 +45,7 @@ function test(build, stage, config, context) {
 
       console.log('[testling] visiting url %j on browser %j', url, browser);
 
-      request({
+      var browserStream = request({
         auth: {
           user: config.testling_username,
           pass: config.testling_password
@@ -53,12 +53,16 @@ function test(build, stage, config, context) {
         method: 'GET',
         url: url,
         rejectUnauthorized: false
-      }, replied);
+      });
 
-      function replied(err, res, body) {
-        if (err) cb(err);
-        else cb(null, body);
+      var reply = '';
+      browserStream.on('data', onBrowserData);
+
+      function onBrowserData(d) {
+        console.log('from browser: %j', d);
+        reply += d;
       }
+
     }
   }
 
