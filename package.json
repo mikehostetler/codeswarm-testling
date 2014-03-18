@@ -1,0 +1,21 @@
+{
+  "name": "codeswarm-testling",
+  "version": "0.0.1",
+  "description": "Plugin for doing browser tests in Testling",
+  "private": true,
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/CodeSwarm/codeswarm-testling.git"
+  },
+  "author": "CodeSwarm",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CodeSwarm/codeswarm-testling/issues"
+  },
+  "homepage": "https://github.com/CodeSwarm/codeswarm-testling",
+  "dependencies": {
+    "request": "~2.34.0",
+    "shelly": "0.0.3"
+  }
+}
