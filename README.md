@@ -1,6 +1,14 @@
-## Env Vars:
+## Instructions
 
-* SAUCE_JAR: path to the Sauce Labs connect 3.0 Jar file.
+Before you run any test you first need to upload your public key to testling.
+To do that you can:
+
+```bash
+$ curl -u <my testling username> -sST <my testling pub key> https://testling.com/tunnel
+```
+
+(It is recommended that you create a specific ssh key just for testling)
+
 
 ## Development environment
 
