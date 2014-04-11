@@ -6,21 +6,26 @@ module.exports = env;
 
 function env(build, stage, config, context) {
 
+  context.testling = {};
+  context.testling.tunnel =
+    new Tunnel(build, stage, config, context);
+
   async.series([
+    startRemoteTunnel,
     startGateway,
-    startTunnel
+    startLocalTunnel,
     ], done);
 
   function startGateway(cb) {
-    gateway.start(stage, config, cb);
+    gateway.start(stage, config, context, cb);
   }
 
-  function startTunnel(cb) {
-    context.testling = {};
-    context.testling.tunnel =
-      new Tunnel(build, stage, config, context);
+  function startRemoteTunnel(cb) {
+    context.testling.tunnel.startRemote(cb);
+  }
 
-    context.testling.tunnel.start(cb);
+  function startLocalTunnel(cb) {
+    context.testling.tunnel.startLocal(cb);
   }
 
   function done(err) {

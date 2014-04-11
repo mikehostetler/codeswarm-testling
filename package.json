@@ -16,6 +16,7 @@
   "homepage": "https://github.com/CodeSwarm/codeswarm-testling",
   "dependencies": {
     "request": "~2.34.0",
-    "shelly": "0.0.3"
+    "shelly": "0.0.3",
+    "node-uuid": "~1.4.1"
   }
 }

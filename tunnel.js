@@ -2,6 +2,7 @@ var inherits     = require('util').inherits;
 var EventEmitter = require('events').EventEmitter;
 var request      = require('request');
 var shelly       = require('shelly');
+var uuid         = require('node-uuid').v4;
 
 
 var SSH_TUNNEL_TIMEOUT_MS = 30 * 1000; // 30 seconds
@@ -15,6 +16,8 @@ module.exports = Tunnel;
 
 function Tunnel(build, stage, config, context) {
   EventEmitter.call(this);
+
+  this.id = uuid();
 
   this.build = build._id || build.id;
 
@@ -39,11 +42,16 @@ Tunnel.prototype.openRemoteTunnel = function(callback) {
     auth: auth,
     method: 'GET',
     rejectUnauthorized: false,
-    url: this.base + '/tunnel/open'
+    url: this.base + '/tunnel/open/' + self.id
   }, openTunnelReplied);
 
   function openTunnelReplied(err, res, body) {
     if (err) return callback(err);
+
+    if (res.statusCode != 200)
+      return callback(
+        new Error('Response status code was ' + res.statusCode +
+                  '. body: ' + JSON.stringify(body)));
 
     /// get SSH command from response
     var match = body.match(tunnelSetupRegex);
@@ -95,21 +103,24 @@ Tunnel.prototype.removeSshKey = function placeSshKey(callback) {
 
 Tunnel.prototype.openLocalTunnel = function sshTunnel(cb) {
   var command = this.context.ssh_command;
+  console.log('[Testling] SSH COMMAND:', command);
   var parts = command.match(sshArgsRegex);
 
   var flags = '-' + parts[1];
   var remotePort = parts[2];
-  var localPort = parts[3]; // not used, we always use 8080
+  var localPort = parts[3];
   var username = parts[4];
   var hostname = parts[5];
+
+  console.log('CONTEXT port: %j'.red, this.context.port);
 
   var args = [
     '-v', // verbose
     '-i', this.context.pkey_path, // force using identity file
-    '-o', 'PasswordAuthentication no',
-    '-o', 'StrictHostKeyChecking no',
+    '-o', 'PasswordAuthentication=no',
+    '-o', 'StrictHostKeyChecking=no',
     flags,
-    remotePort + ':localhost:8080',
+    '*:' + remotePort + ':localhost:' + this.context.port,
     username + '@' + hostname];
 
   var options = {
@@ -123,6 +134,8 @@ Tunnel.prototype.openLocalTunnel = function sshTunnel(cb) {
   child.stderr.on('data', onLocalTunnelData);
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', onLocalTunnelData);
+
+  child.once('close', onLocalTunnelClose);
 
   var timeout = setTimeout(timedout, SSH_TUNNEL_TIMEOUT_MS);
 
@@ -161,13 +174,20 @@ Tunnel.prototype.openLocalTunnel = function sshTunnel(cb) {
       cb(err);
     }
   }
+
+  function onLocalTunnelClose(code) {
+    console.log('[testling] local tunnel closed with status ' + code);
+  }
 };
 
-Tunnel.prototype.start = function(callback) {
+Tunnel.prototype.startRemote = function(callback) {
+  this.openRemoteTunnel(callback);
+};
+
+Tunnel.prototype.startLocal = function(callback) {
   this.emit('verbose:writeln', "=> Testling trying to open tunnel".inverse);
 
   async.series([
-    this.openRemoteTunnel.bind(this),
     this.placeSshKey.bind(this),
     this.chmodSshKey.bind(this),
     this.openLocalTunnel.bind(this),
@@ -185,12 +205,16 @@ Tunnel.prototype.stop = function stop(cb) {
   request({
     auth: auth,
     method: 'GET',
-    url: this.base + '/tunnel/close',
+    url: this.base + '/tunnel/close/' + this.id,
     rejectUnauthorized: false
   }, replied);
 
-  function replied(err) {
-    if (cb) cb(err);
+  function replied(err, res, body) {
+    if (cb) return cb(err);
+    if (res.statusCode != 200)
+      return cb(
+        new Error('Error closing tunnel: status code was ' + res.statusCode +
+                 ', body: ' + JSON.stringify(body)));
   }
 }
 
@@ -206,4 +230,10 @@ function detectExitCodeAndCallback(cb) {
     if (code != 0) err = new Error('Exit code was ' + code);
     cb(err);
   }
+}
+
+function timeout(ms) {
+  return function(cb) {
+    setTimeout(cb, ms);
+  };
 }

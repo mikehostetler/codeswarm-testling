@@ -38,30 +38,62 @@ function test(build, stage, config, context) {
 
     function testOneUrlOneBrowser(browser, cb) {
 
-      var url = 'https://testling.com/visit?uri=' +
+      var url = 'https://testling.com/visit/' + tunnel.id + '?uri=' +
                 encodeURIComponent(targetURL) +
                 '&browser=' +
                 encodeURIComponent(browser);
 
       console.log('[testling] visiting url %j on browser %j', url, browser);
 
-      var browserStream = request({
+      var browserStream = request.get({
+        url: url,
         auth: {
           user: config.testling_username,
           pass: config.testling_password
         },
-        method: 'GET',
-        url: url,
         rejectUnauthorized: false
       });
 
-      var reply = '';
-      browserStream.on('data', onBrowserData);
+      browserStream.once('response', function(res) {
+        console.log('got response');
 
-      function onBrowserData(d) {
-        console.log('from browser: %j', d);
-        reply += d;
-      }
+        var reply = '';
+        res.setEncoding('utf8');
+        res.on('data', onBrowserData);
+
+        function onBrowserData(d) {
+          console.log('from browser: %j', d);
+          reply += d;
+          checkResponse();
+        }
+
+        function checkResponse() {
+          if (reply.match(/channel not open/))
+            return callback(new Error('Testling says the tunnel is not open'));
+
+          else {
+            try {
+              reply = JSON.parse(reply);
+            } catch(e) {
+              callback(e);
+              return;
+            }
+            callback(null, reply);
+          }
+        }
+
+        var calledback = false;
+
+        function callback() {
+          if (! calledback) {
+            calledback = true;
+            cb.apply(null, arguments);
+          }
+        }
+
+
+      });
+
 
     }
   }
