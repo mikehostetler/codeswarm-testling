@@ -1,7 +1,7 @@
 {
   "name": "codeswarm-testling",
   "version": "0.0.1",
-  "description": "Plugin for doing browser tests in Testling",
+  "description": "CodeSwarm Plugin for doing browser tests in Testling",
   "private": true,
   "main": "index.js",
   "repository": {
@@ -9,7 +9,7 @@
     "url": "git://github.com/CodeSwarm/codeswarm-testling.git"
   },
   "author": "CodeSwarm",
-  "license": "MIT",
+  "license": "Apache 2",
   "bugs": {
     "url": "https://github.com/CodeSwarm/codeswarm-testling/issues"
   },
@@ -18,5 +18,14 @@
     "request": "~2.34.0",
     "shelly": "0.0.3",
     "node-uuid": "~1.4.1"
-  }
+  },
+  "devDependencies": {
+		"mocha": "^1.18.2"
+	},
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha -u tdd"
+  },
+  "keywords": [
+    "codeswarm"
+  ]
 }
